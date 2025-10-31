@@ -1,0 +1,4 @@
+cryptography
+snowflake
+snowflake-snowpark-python
+streamlit===1.46.1

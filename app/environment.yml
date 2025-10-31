@@ -1,0 +1,7 @@
+name: hw_brd_creation
+channels:
+- snowflake
+dependencies:
+- cryptography
+- streamlit=1.46.1
+- snowflake

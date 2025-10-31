@@ -1,0 +1,15 @@
+definition_version: '2'
+entities:
+  app:
+    type: streamlit
+    identifier: ex_streamlit_app
+    title: Example Streamlit App
+    main_file: streamlit_app.py
+    query_warehouse: {{YOUR_WAREHOUSE_NAME}}
+    stage: streamlit_stage
+    artifacts:
+      - environment.yml
+      - shared/__init__.py
+      - shared/shared_components.py
+      - logo.svg
+      - streamlit_app.py

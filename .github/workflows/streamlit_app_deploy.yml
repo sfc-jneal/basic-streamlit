@@ -1,0 +1,127 @@
+name: Snowflake Streamlit App Deploy
+
+on:
+  workflow_dispatch:  # Allows manual trigger from the Actions tab
+  push:
+    branches:
+      - dev   # DEV (auto)
+#      - qa    # QA (approval control by GitHub branch protections)
+#      - main  # PROD (approval control by GitHub branch protections)
+    paths:  # Trigger by changes in paths
+      - 'app/**'
+
+jobs:
+
+  deploy_dev:
+    if: github.ref == 'refs/heads/dev'
+    name: Deploy to DEV
+    runs-on: self-hosted  # Needed for VPN access to Snowflake account
+    # runs-on: ubuntu-latest
+    environment:  # GitHub Environment
+      name: DEV
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Snowflake CLI
+        run: |
+          python -m pip install --upgrade pip
+          pip install snowflake-cli==3.11.0
+
+      - name: Setup Snowflake Config
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ vars.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ vars.SNOWFLAKE_USER }}
+          SNOWFLAKE_ROLE: ${{ vars.SNOWFLAKE_ROLE }}
+          SNOWFLAKE_WAREHOUSE: ${{ vars.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ vars.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+        run: |
+          echo "Setup Snowflake Config..."
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > ./private_key.p8
+          chmod 600 ./private_key.p8
+          ls -la
+          
+          cat << EOF > ./config.toml
+          default_connection_name = "c1"
+          [connections.c1]
+          role = "${SNOWFLAKE_ROLE}"
+          account = "${SNOWFLAKE_ACCOUNT}"
+          user = "${SNOWFLAKE_USER}"
+          private_key_file = "$GITHUB_WORKSPACE/private_key.p8"
+          authenticator = "SNOWFLAKE_JWT"
+          database = "${SNOWFLAKE_DATABASE}"
+          warehouse = "${SNOWFLAKE_WAREHOUSE}"
+          EOF
+          chmod 600 ./config.toml
+          echo "config.toml created."
+          cat ./config.toml
+
+          export SNOWFLAKE_HOME="."
+          export SNOWFLAKE_ROLE="${SNOWFLAKE_ROLE}"
+          
+          echo "Setup Snowflake Config finished"
+
+      - name: Deploy
+        run: |
+          echo "Deploy..."
+          
+          snow --version 
+          snow --config-file="$GITHUB_WORKSPACE/config.toml" connection test
+          
+          bash "./app/deploy_streamlit_app.sh"
+                 
+          rm -f private_key.p8
+          echo "Deploy finished"
+
+  deploy_qa:
+    if: github.ref == 'refs/heads/qa'
+    name: Deploy to QA
+    runs-on: self-hosted # Needed for VPN access to Snowflake account
+    # runs-on: ubuntu-latest
+    environment: # GitHub Environment
+      name: QA
+    needs: [deploy_dev]
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Todo
+        run: |
+          echo "TODO"
+
+  deploy_prod:
+    if: github.ref == 'refs/heads/main'
+    name: Deploy to PROD
+    runs-on: self-hosted # Needed for VPN access to Snowflake account
+    # runs-on: ubuntu-latest
+    environment: # GitHub Environment
+      name: PROD
+    needs: [deploy_qa]
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Todo
+        run: |
+          echo "TODO"
